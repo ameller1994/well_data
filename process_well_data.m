@@ -11,8 +11,11 @@ function [ listSigCatalysis, methanolOrbufferListSigCatalysis ] = process_well_d
 %   fileName must be xls file (can be changed in inconvenient)
 %   wellnum specifies either the first well or the second
 
+%   Preprocess data
     data = xlsread(fileName);
-    data = data/10000000;
+    data = data(:,3:end);
+    data = mean(data);
+    data = reshape(data,12,8)';
     
     if percentPositive == 5,
         thresh = 1;
@@ -32,7 +35,7 @@ function [ listSigCatalysis, methanolOrbufferListSigCatalysis ] = process_well_d
         quit
     end
     
-    figure;
+    hsolvents = figure('units','normalized','outerposition',[0 0 1 1]);
     listSigCatalysis = [];
     for i=1:2:7,
         
@@ -48,24 +51,39 @@ function [ listSigCatalysis, methanolOrbufferListSigCatalysis ] = process_well_d
         sigCatalysis = withcatalyst > withoutcatalyst * (1+negativeThresh/100) & withcatalyst > cutoff;
         listSigCatalysis = [ listSigCatalysis , sigCatalysis ];
         
+    
+        tograph(1:8,1) = withoutcatalyst';
+        tograph(1:8,2) = withcatalyst';
         subplot(2,2,(i+1)/2)
-        width1 = 0.5;
-        hBars = bar(withoutcatalyst,width1,'b');
-        set(hBars(1),'BaseValue',cutoff);
-        hBaseline = get(hBars(1),'BaseLine');
-        set(hBaseline,'LineStyle',':','Color','red','LineWidth',2);
-        hold on;
-        hBars = bar(withcatalyst,width1/2,'r');
-        set(hBars(1),'BaseValue',cutoff);
-        hBaseline = get(hBars(1),'BaseLine');
-        set(hBaseline,'LineStyle',':','Color','red','LineWidth',2);
+        x = 1:8;
+        h1 = bar(x,tograph);
         l = {'.1 imid','.5 imid','1.0 imid','N/A','.1 Et3N','.1 H+sp.','.1 CSA','.1 AcOH'};
         set(gca,'xticklabel',l);
-        legend('W/o catalyst','With catalyst');
+        hold on;
+        h2 = plot(x,ones(1,8)*positiveControl(1),'--',x,ones(1,8)*positiveControl(2),'--',x,ones(1,8)*positiveControl(3),'--',x,ones(1,8)*positiveControl(4),'--','LineWidth',4);
         hold off;
+%         width1 = 0.5;
+%         hBars = bar(withoutcatalyst,width1,'b');
+%         set(hBars(1),'BaseValue',cutoff);
+%         hBaseline = get(hBars(1),'BaseLine');
+%         set(hBaseline,'LineStyle',':','Color','red','LineWidth',2);
+%         hold on;
+%         hBars = bar(withcatalyst,width1/2,'r');
+%         set(hBars(1),'BaseValue',cutoff);
+%         hBaseline = get(hBars(1),'BaseLine');
+%         set(hBaseline,'LineStyle',':','Color','red','LineWidth',2);
+%         l = {'.1 imid','.5 imid','1.0 imid','N/A','.1 Et3N','.1 H+sp.','.1 CSA','.1 AcOH'};
+%         set(gca,'xticklabel',l);
+%         legend('W/o catalyst','With catalyst');
+%         hold off;
         title(titles{(i+1)/2});
         
     end
+    
+    leg = legend([h1';h2],'W/o catalyst','With catalyst', '5','10','25','50','Location','NorthEastOutside');
+    set(leg, 'FontSize',7);
+    set(leg,'units','pixels');
+    set(leg,'position',[730 363 150 98])
           
     
     %Process buffers or methanol
@@ -80,6 +98,8 @@ function [ listSigCatalysis, methanolOrbufferListSigCatalysis ] = process_well_d
         end
         
         titles = {'Buffer A','Buffer B','Buffer C','Buffer D'};
+        woC = [];
+        wC = [];
         for i=1:2:7, 
             withcatalyst = data(i,9);
             withoutcatalyst = data(i+1,9);
@@ -87,22 +107,29 @@ function [ listSigCatalysis, methanolOrbufferListSigCatalysis ] = process_well_d
             cutoff = positiveControl(1);
             sigCatalysis = withcatalyst > withoutcatalyst*(1+negativeThresh/100) & withcatalyst > cutoff;
             methanolOrbufferListSigCatalysis = [methanolOrbufferListSigCatalysis, sigCatalysis];
+            woC = [woC, withoutcatalyst ];
+            wC = [wC, withcatalyst ];
+
             
-            subplot(2,2,(i+1)/2)
-            width1 = 0.5;
-            hBars = bar(1,withoutcatalyst,width1,'b');
-            set(hBars(1),'BaseValue',cutoff);
-            hBaseline = get(hBars(1),'BaseLine');
-            set(hBaseline,'LineStyle',':','Color','red','LineWidth',2);
-            hold on
-            hBars = bar(1,withcatalyst,width1/2,'r');
-            set(hBars(1),'BaseValue',cutoff);
-            hBaseline = get(hBars(1),'BaseLine');
-            set(hBaseline,'LineStyle',':','Color','red','LineWidth',2);
-            hold off
-            title(titles{(i+1)/2});
-            legend('W/o catalyst','With catalyst');
+%             width1 = 0.5;
+%             hBars = bar(1,withoutcatalyst,width1,'b');
+%             set(hBars(1),'BaseValue',cutoff);
+%             hBaseline = get(hBars(1),'BaseLine');
+%             set(hBaseline,'LineStyle',':','Color','red','LineWidth',2);
+%             hold on
+%             hBars = bar(1,withcatalyst,width1/2,'r');
+%             set(hBars(1),'BaseValue',cutoff);
+%             hBaseline = get(hBars(1),'BaseLine');
+%             set(hBaseline,'LineStyle',':','Color','red','LineWidth',2);
+%             hold off
+            
         end
+        x = 1:4;
+        bar(x,[woC', wC']);
+        hold on;
+        plot(x,ones(4)*positiveControl(1),'--',x,ones(4)*positiveControl(2),'--','LineWidth',4);
+        title(titles{(i+1)/2});
+        legend('W/o catalyst','With catalyst');
     elseif wellnum == 2,
         %process methanol
         rv = [1:4,7:8];
@@ -112,17 +139,10 @@ function [ listSigCatalysis, methanolOrbufferListSigCatalysis ] = process_well_d
         cutoff = positiveControl(thresh);
         methanolOrbufferListSigCatalysis = withcatalyst > withoutcatalyst*(1+negativeThresh/100) & withcatalyst > cutoff;
         figure;
-        width1 = 0.5;
-        hBars = bar(withoutcatalyst,width1,'b');
-        set(hBars(1),'BaseValue',cutoff);
-        hBaseline = get(hBars(1),'BaseLine');
-        set(hBaseline,'LineStyle',':','Color','red','LineWidth',2);
-        hold on
-        hBars = bar(withcatalyst,width1/2,'r');
-        set(hBars(1),'BaseValue',cutoff);
-        hBaseline = get(hBars(1),'BaseLine');
-        set(hBaseline,'LineStyle',':','Color','red','LineWidth',2);
-        hold off
+        x = 1:6;
+        bar(x,[withoutcatalyst , withcatalyst]);
+        hold on;
+        plot(x,ones(size(x,2))*positiveControl(1),'--',x,ones(size(x,2))*positiveControl(2),'--',x,ones(size(x,2))*positiveControl(3),'--',x,ones(size(x,2))*positiveControl(4),'--','LineWidth',4);
         l = {'.1 imid','.5 imid','1.0 imid','N/A','.1 CSA','.1 AcOH'};
         set(gca,'xticklabel',l);
         title('Methanol Analysis');
