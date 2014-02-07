@@ -1,0 +1,135 @@
+function [ listSigCatalysis, methanolOrbufferListSigCatalysis ] = process_well_data(fileName, percentPositive, negativeThresh, wellnum)
+%proess_well_data takes a file of fluorescent data and determines which
+%catalysts are significantly increasing the rate of reaction on the basis
+%of positive and negative controls
+%   percentPositive - the amount of product that must be produced accroding
+%   to fluorescence to indicate significant catalysis. This is a percent
+%   (i.e. at least fluroescence corresponding to 25 percent)
+%   negativeThresh - the mimimum percent catalysis needed relative to
+%   negative control (i.e. if negative control is 1 then if negativeThresh
+%   is 40% percent, fluorescent threshold is 1.4)
+%   fileName must be xls file (can be changed in inconvenient)
+%   wellnum specifies either the first well or the second
+
+    data = xlsread(fileName);
+    data = data/10000000;
+    
+    if percentPositive == 5,
+        thresh = 1;
+    elseif percentPositive == 10,
+        thresh = 2;
+    elseif percentPositive == 25,
+        thresh = 3;
+    else
+        thresh = 4;
+    end
+    
+    if wellnum == 1,
+        titles = {'Solvent 1','Solvent 2','Solvent 3','Solvent 4'};
+    elseif wellnum == 2;
+        titles = {'Solvent 5','Solvent 6','Solvent 7','Solvent 8'};
+    else
+        quit
+    end
+    
+    figure;
+    listSigCatalysis = [];
+    for i=1:2:7,
+        
+        withcatalyst = data(:,i);
+        withoutcatalyst = data(:,i+1);
+        if i==1 || i==5,
+            positiveControl = data(i:i+3,11);
+        else
+            positiveControl = data(i-2:i+1,12); %i will be 3 and 7 for Solvent 2 and 4
+        end
+        
+        cutoff = positiveControl(thresh); %thresh specifies 5,10,25, or 50 percent threshold for fluorescence
+        sigCatalysis = withcatalyst > withoutcatalyst * (1+negativeThresh/100) & withcatalyst > cutoff;
+        listSigCatalysis = [ listSigCatalysis , sigCatalysis ];
+        
+        subplot(2,2,(i+1)/2)
+        width1 = 0.5;
+        hBars = bar(withoutcatalyst,width1,'b');
+        set(hBars(1),'BaseValue',cutoff);
+        hBaseline = get(hBars(1),'BaseLine');
+        set(hBaseline,'LineStyle',':','Color','red','LineWidth',2);
+        hold on;
+        hBars = bar(withcatalyst,width1/2,'r');
+        set(hBars(1),'BaseValue',cutoff);
+        hBaseline = get(hBars(1),'BaseLine');
+        set(hBaseline,'LineStyle',':','Color','red','LineWidth',2);
+        l = {'.1 imid','.5 imid','1.0 imid','N/A','.1 Et3N','.1 H+sp.','.1 CSA','.1 AcOH'};
+        set(gca,'xticklabel',l);
+        legend('W/o catalyst','With catalyst');
+        hold off;
+        title(titles{(i+1)/2});
+        
+    end
+          
+    
+    %Process buffers or methanol
+    if wellnum == 1,
+        %process buffers
+        methanolOrbufferListSigCatalysis = [];
+        figure;
+        %Buffer can only have threshold of 10 or 25% so adjust default to
+        %10%
+        if thresh ~= 2 && thresh ~= 3,
+            thresh == 2;
+        end
+        
+        titles = {'Buffer A','Buffer B','Buffer C','Buffer D'};
+        for i=1:2:7, 
+            withcatalyst = data(i,9);
+            withoutcatalyst = data(i+1,9);
+            positiveControl = data(i:i+1,10);
+            cutoff = positiveControl(1);
+            sigCatalysis = withcatalyst > withoutcatalyst*(1+negativeThresh/100) & withcatalyst > cutoff;
+            methanolOrbufferListSigCatalysis = [methanolOrbufferListSigCatalysis, sigCatalysis];
+            
+            subplot(2,2,(i+1)/2)
+            width1 = 0.5;
+            hBars = bar(1,withoutcatalyst,width1,'b');
+            set(hBars(1),'BaseValue',cutoff);
+            hBaseline = get(hBars(1),'BaseLine');
+            set(hBaseline,'LineStyle',':','Color','red','LineWidth',2);
+            hold on
+            hBars = bar(1,withcatalyst,width1/2,'r');
+            set(hBars(1),'BaseValue',cutoff);
+            hBaseline = get(hBars(1),'BaseLine');
+            set(hBaseline,'LineStyle',':','Color','red','LineWidth',2);
+            hold off
+            title(titles{(i+1)/2});
+            legend('W/o catalyst','With catalyst');
+        end
+    elseif wellnum == 2,
+        %process methanol
+        rv = [1:4,7:8];
+        withcatalyst = data(rv,9);
+        withoutcatalyst = data(rv,10);
+        positiveControl = [data(5,9:10),data(6,9:10)];
+        cutoff = positiveControl(thresh);
+        methanolOrbufferListSigCatalysis = withcatalyst > withoutcatalyst*(1+negativeThresh/100) & withcatalyst > cutoff;
+        figure;
+        width1 = 0.5;
+        hBars = bar(withoutcatalyst,width1,'b');
+        set(hBars(1),'BaseValue',cutoff);
+        hBaseline = get(hBars(1),'BaseLine');
+        set(hBaseline,'LineStyle',':','Color','red','LineWidth',2);
+        hold on
+        hBars = bar(withcatalyst,width1/2,'r');
+        set(hBars(1),'BaseValue',cutoff);
+        hBaseline = get(hBars(1),'BaseLine');
+        set(hBaseline,'LineStyle',':','Color','red','LineWidth',2);
+        hold off
+        l = {'.1 imid','.5 imid','1.0 imid','N/A','.1 CSA','.1 AcOH'};
+        set(gca,'xticklabel',l);
+        title('Methanol Analysis');
+        legend('W/o catalyst','With catalyst');
+    else
+        quit
+    end
+
+end
+
